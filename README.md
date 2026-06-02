@@ -1,27 +1,59 @@
+# local_ocr
 
- Many new "small" languange models, such as recent qwen and gemma models are very good at OCR, even on handwriting. Not best for every use case, but prefereable to traditional solutuons in messy circumstances. This script leverages that to allow the creation of accessible, machine readable text without needing to use a cloud service, which is preferable for privacy sensitive applications. 
-
+Many new "small" language models, such as recent Qwen and Gemma models, are very good at OCR, even on handwriting. Not best for every use case, but preferable to traditional solutions in messy circumstances. This script leverages that to allow the creation of accessible, machine readable text without needing to use a cloud service, which is preferable for privacy sensitive applications.
 
 ### Install dependencies
 Script assumes you have an LMStudio instance running on default localhost:1234.
-You also neeed the following python libraries installed: 
+You also need the following python libraries installed:
 
-```pip install pymupdf requests```
-
+```
+pip install pymupdf requests
+```
 
 ### Usage
 ```
-  python3 local_ocr.py <path/filename.pdf>
+python3 local_ocr.py <path/filename.pdf>
+```
+
+By default markdown version will be filename.md in same directory. You can change this if you want to using the -o (output) flag.
 
 ```
-By default markdown version will be filename.md in same directory. You can change this if you want to using the -o (output) flag. 
+python3 local_ocr.py /imports/file.pdf -o /exports/file.md
+```
+
+### Handling blank pages (retries & heuristics)
+Vision models occasionally return nothing for a page — sometimes the page really is blank, sometimes the model just choked on it. The script tells these apart instead of silently dropping text.
+
+For each page it:
+
+1. **Measures ink.** A fast low-resolution grayscale pass counts dark pixels. If the page is essentially white, a blank response is accepted as `[no text found]` and no time is wasted retrying.
+2. **Retries pages that have writing but came back empty.** Each retry re-renders at a higher DPI (`+--dpi-step` per attempt) and nudges the temperature up slightly. Refusal-style replies (e.g. "I'm unable to…", "appears to be blank") are treated as failures and retried too.
+3. **Falls back to Tesseract** (optional, on by default) only after retries are exhausted on a page that clearly has content. Tesseract is a printed-text engine and is poor at handwriting, so its output is clearly marked in the Markdown with an HTML comment — it is a last resort, not a peer of the model.
+
+At the end it prints a summary like `Pages — ok:5 recovered:2 blank:1 failed:0`.
+
+Relevant flags (all optional):
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--retries N` | `2` | Retries for a blank/failed page before giving up. |
+| `--dpi N` | `200` | Base render resolution. Raise for dense or faint handwriting. |
+| `--dpi-step N` | `50` | DPI added on each retry. |
+| `--blank-ink-threshold F` | `0.004` | Min dark-pixel fraction for a page to count as "has content". Lower it if real pages are wrongly called blank; raise it if truly blank pages keep getting retried. The per-page ink fraction is printed to the log so you can calibrate. |
+| `--temperature F` | `0.1` | Base sampling temperature. Kept low so the model doesn't "autocomplete" handwriting into plausible-but-wrong words. |
+| `--max-tokens N` | `4096` | Max output tokens per page. |
+| `--no-tesseract` | (fallback on) | Disable the Tesseract fallback entirely. |
+
+The Tesseract fallback is best-effort — if its libraries aren't installed it is silently skipped. To enable it:
 
 ```
-  python3 local_ocr.py /imports/file.pdf -o /exports/file.md
+pip install pytesseract pillow
+# plus the tesseract binary, e.g. on Debian/Ubuntu:
+sudo apt install tesseract-ocr
 ```
 
 ### Prompt
-This is the system prompt the script uses by default. Begins on line 31 of script if you want to tweak it. 
+This is the system prompt the script uses by default. Begins on line 43 of the script if you want to tweak it.
 
 ```
 You are a verbatim transcription engine. Your only job is to convert an image of
