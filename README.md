@@ -1,5 +1,5 @@
 
- Many new "small" languange models, such as recent qwen and gemma models are very good at OCR, even on handwriting. Not best for every use case, but prefereable to traditional solutuons in messy circumstances. This script leverages that to allow the creation of accessible, machine readable text without needing to use a cloud service. 
+ Many new "small" languange models, such as recent qwen and gemma models are very good at OCR, even on handwriting. Not best for every use case, but prefereable to traditional solutuons in messy circumstances. This script leverages that to allow the creation of accessible, machine readable text without needing to use a cloud service, which is preferable for privacy sensitive applications. 
 
 
 ### Install dependencies
